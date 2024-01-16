@@ -5,6 +5,7 @@ import math
 import matplotlib.pyplot as plt
 import numpy as np
 import torch.nn as nn
+import torch 
 import torchvision.models as models
 import torchvision.transforms as transforms
 
@@ -66,6 +67,7 @@ class Img2Vec:
         self.dataset = {}
         self.image_clusters = {}
         self.cluster_centers = {}
+         
 
     def validate_model(self, model_name):
         if model_name not in self.embed_dict.keys():
@@ -174,7 +176,7 @@ class Img2Vec:
 
         return
 
-    def similar_images(self, target_file, n=None):
+    def similar_images(self, target_file, n=None, dot=False):
         """
         Function for comparing target image to embedded image dataset
 
@@ -187,14 +189,22 @@ class Img2Vec:
 
         target_vector = self.embed_image(target_file)
 
-        # initiate computation of consine similarity
-        cosine = nn.CosineSimilarity(dim=1)
 
         # iteratively store similarity of stored images to target image
         sim_dict = {}
-        for k, v in self.dataset.items():
-            sim = cosine(v, target_vector)[0].item()
-            sim_dict[k] = sim
+        if dot == False:
+            #### Cosine similarity 를 이용 ####
+            cosine = nn.CosineSimilarity(dim=1)
+            for k, v in self.dataset.items():
+                sim = cosine(v, target_vector)[0].item()
+                sim_dict[k] = sim
+        
+        else:
+            #### Dot Product 를 이용 ####
+            # iteratively store similarity of stored images to target image       
+            for k, v in self.dataset.items():
+                dotProduct = torch.dot(torch.flatten(v), torch.flatten(target_vector)).item()
+                sim_dict[k] = dotProduct
 
         # sort based on decreasing similarity
         items = sim_dict.items()
@@ -205,15 +215,15 @@ class Img2Vec:
             sim_dict = dict(list(sim_dict.items())[: int(n)])
 
         self.output_images(sim_dict, target_file)
-
-        return sim_dict
-
+        self.dict = sim_dict
+        self.output_images = self.output_images
+        return sim_dict  
+    
     def output_images(self, similar, target):
         self.display_img(target, "original")
 
         for k, v in similar.items():
             self.display_img(k, "similarity:" + str(v))
-
         return
 
     def display_img(self, path, title):
@@ -223,7 +233,7 @@ class Img2Vec:
         plt.show()
 
         return
-
+    
     def save_dataset(self, path):
         """
         Function to save a previously embedded image dataset to file
